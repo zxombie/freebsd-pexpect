@@ -65,17 +65,37 @@ class EarlyBoot(Stage):
             disable = [self.state], enable = [stage.state]))
 
 class Loader(Stage):
-    def __init__(self):
+    def __init__(self, singleuser = False):
         super().__init__(
           state = expect_runner.CommandState('OK', enabled = False,
            delay = key_delay))
-        self.state.add_late_command('boot')
+        if singleuser:
+            self.state.add_late_command('boot -s')
+        else:
+            self.state.add_late_command('boot')
 
     def add_command(self, cmd):
         self.state.add_command(cmd)
 
     def set_next_stage(self, stage):
         self.state.set_next_state(stage.state)
+
+class SingleuserBoot(Stage):
+    def __init__(self):
+        super().__init__(True)
+        self.state.add_pattern(expect_runner.Pattern(
+          'FreeBSD is a registered trademark of The FreeBSD Foundation.'))
+        self.state.add_pattern(expect_runner.Pattern(
+            'Trying to mount root from'))
+
+        self.prompt = expect_runner.Pattern('Enter full pathname of shell.*:')
+        self.prompt.add_action(
+            expect_runner.SendlineAction('', max(0.1, key_delay)))
+        self.state.add_pattern(self.prompt)
+
+    def set_next_stage(self, stage):
+        self.prompt.add_action(expect_runner.ChangeStateAction(
+            disable = [self.state], enable = [stage.state]))
 
 class Boot(Stage):
     def __init__(self):
@@ -166,6 +186,8 @@ parser.add_argument('--key-delay', type = float, default = 0.0,
   help = 'Delay between each key press')
 parser.add_argument('--loader', action='append',
   help = 'Run a command at the loader prompt')
+parser.add_argument('--singleuser', action = "store_true",
+  help = 'Boot to singleuser mode')
 parser.add_argument("--tests", help = "Run the FreeBSD test suite",
   action = "store_true")
 parser.add_argument("command", help = "VM command to run")
@@ -176,14 +198,27 @@ key_delay = args.key_delay
 fbsd = FreeBSD()
 if args.loader != None and len(args.loader) > 0:
     fbsd.add_stage(EarlyBoot())
-    loader = Loader()
+    loader = Loader(args.singleuser)
     for cmd in args.loader:
         loader.add_command(cmd)
     fbsd.add_stage(loader)
-fbsd.add_stage(Boot())
+elif args.singleuser:
+    fbsd.add_stage(EarlyBoot())
+    loader = Loader(args.singleuser)
+    fbsd.add_stage(loader)
+
+if args.singleuser:
+    fbsd.add_stage(SingleuserBoot())
+else:
+    fbsd.add_stage(Boot())
+
 if args.tests:
     fbsd.add_stage(FBSDTests())
-fbsd.add_stage(Shutdown())
+
+if args.singleuser:
+    fbsd.add_stage(Shutdown('#'))
+else:
+    fbsd.add_stage(Shutdown())
 
 #fbsd.run('qemu-system-aarch64 -m 1024M -cpu cortex-a57 -M virt -bios /home/at718/QEMU_EFI.fd -serial stdio -nographic -monitor none -drive if=none,file=disk-arm64.img,id=hd0 -device virtio-blk-device,drive=hd0 -snapshot')
 fbsd.run(args.command)
