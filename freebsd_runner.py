@@ -95,13 +95,10 @@ class Boot(Stage):
         self.login.add_action(expect_runner.ChangeStateAction(
             disable = [self.state], enable = [stage.state]))
 
-class Shutdown(Stage):
-    def __init__(self):
-        super().__init__()
-        prompt = expect_runner.Pattern('root@.*#')
-        prompt.add_action(
-          expect_runner.SendlineAction('shutdown -p now', key_delay))
-        self.state.add_pattern(prompt)
+class Shutdown(CommandStage):
+    def __init__(self, prompt = 'root@.*#'):
+        super().__init__(prompt)
+        self.state.add_command('shutdown -p now')
 
         # Check if we rebooted rather than shutdown.
         # Some UEFI firmware images fail to shutdown correctly.
@@ -109,11 +106,9 @@ class Shutdown(Stage):
         p.add_action(expect_runner.ExitAction(0))
         self.state.add_pattern(p)
 
-class FBSDTests(Stage):
+class FBSDTests(CommandStage):
     def __init__(self):
-        super().__init__(
-          state = expect_runner.CommandState('root@.*#', enabled = False,
-            delay = key_delay))
+        super().__init__('root@.*#')
         self.state.add_command('mount -t msdosfs /dev/vtbd1 /mnt')
         self.state.add_command('cd /usr/tests')
         self.state.add_command('kyua test')
