@@ -221,4 +221,4 @@ else:
     fbsd.add_stage(Shutdown())
 
 #fbsd.run('qemu-system-aarch64 -m 1024M -cpu cortex-a57 -M virt -bios /home/at718/QEMU_EFI.fd -serial stdio -nographic -monitor none -drive if=none,file=disk-arm64.img,id=hd0 -device virtio-blk-device,drive=hd0 -snapshot')
-fbsd.run(args.command)
+fbsd.run(args.command, 3660 * 4)
