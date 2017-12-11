@@ -106,6 +106,9 @@ class Boot(Stage):
             'Trying to mount root from'))
         self.state.add_pattern(expect_runner.Pattern('Feeding entropy'))
         self.state.add_pattern(expect_runner.Pattern('Starting'))
+        self.state.add_pattern(expect_runner.Pattern('Mounting'))
+        self.state.add_pattern(expect_runner.Pattern('Updating'))
+        self.state.add_pattern(expect_runner.Pattern('random: unblocking device'))
 
         self.login = expect_runner.Pattern('login:')
         self.login.add_action(expect_runner.SendlineAction('root', key_delay))
@@ -160,6 +163,11 @@ class FreeBSD:
         self.state.add_pattern(p)
 
         p = expect_runner.Pattern("KDB: enter: panic")
+        p.add_action(expect_runner.ExitAction(1))
+        self.state.add_pattern(p)
+
+        # Check the loader hasn't panic'd
+        p = expect_runner.Pattern('.*Press a key on the console to reboot')
         p.add_action(expect_runner.ExitAction(1))
         self.state.add_pattern(p)
 
