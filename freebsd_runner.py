@@ -178,8 +178,8 @@ class FreeBSD:
         self.runner.add_state(stage.state)
         self.stages.append(stage)
 
-    def run(self, cmd):
-        self.runner.run(cmd)
+    def run(self, cmd, timeout = 3600):
+        self.runner.run(cmd, timeout)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--key-delay', type = float, default = 0.0,

@@ -167,7 +167,7 @@ class Runner:
     def add_state(self, state):
         self.states.append(state)
 
-    def match(self, child):
+    def match(self, child, timeout = 3660):
         matches = []
         patterns = []
 
@@ -179,13 +179,13 @@ class Runner:
                 matches.append(pat.pattern)
                 patterns.append(pat)
 
-        i = child.expect(matches, timeout = 3660)
+        i = child.expect(matches, timeout = timeout)
         pat = patterns[i]
         pat.run(child)
 
-    def run(self, cmd):
+    def run(self, cmd, timeout = 3660):
         child = pexpect.spawnu(cmd)
         child.logfile = sys.stdout
 
         while True:
-            self.match(child)
+            self.match(child, timeout)
