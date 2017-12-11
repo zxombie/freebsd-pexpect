@@ -196,6 +196,8 @@ parser.add_argument('--loader', action='append',
   help = 'Run a command at the loader prompt')
 parser.add_argument('--singleuser', action = "store_true",
   help = 'Boot to singleuser mode')
+parser.add_argument('--early-cmd', action='append',
+  help = 'Runn a command after login')
 parser.add_argument("--tests", help = "Run the FreeBSD test suite",
   action = "store_true")
 parser.add_argument("command", help = "VM command to run")
@@ -219,6 +221,17 @@ if args.singleuser:
     fbsd.add_stage(SingleuserBoot())
 else:
     fbsd.add_stage(Boot())
+
+if args.early_cmd != None and len(args.early_cmd) > 0:
+    if args.singleuser:
+        stage = CommandStage('#')
+    else:
+        stage = CommandStage('root@.*#')
+
+    for cmd in args.early_cmd:
+        stage.state.add_command(cmd)
+
+    fbsd.add_stage(stage)
 
 if args.tests:
     fbsd.add_stage(FBSDTests())
