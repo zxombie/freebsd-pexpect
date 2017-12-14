@@ -129,6 +129,13 @@ class Shutdown(CommandStage):
         p.add_action(expect_runner.ExitAction(0))
         self.state.add_pattern(p)
 
+class FileCopy(CommandStage):
+    def __init__(self, file_name, dest):
+        super().__init__('root@.*#')
+        with open(file_name, 'r') as content_file:
+            buf = content_file.read()
+        self.state.add_command('cat > {1} <<EOF\n{0}\nEOF'.format(buf, dest))
+
 class FBSDTests(CommandStage):
     def __init__(self):
         super().__init__('root@.*#')
@@ -196,6 +203,8 @@ parser.add_argument('--loader', action='append',
   help = 'Run a command at the loader prompt')
 parser.add_argument('--singleuser', action = "store_true",
   help = 'Boot to singleuser mode')
+parser.add_argument('--ssh-key', type = str,
+  help = 'Copy an ssh private key to the VM. WARNING: Will expose the private key to stdout')
 parser.add_argument('--early-cmd', action='append',
   help = 'Runn a command after login')
 parser.add_argument("--tests", help = "Run the FreeBSD test suite",
@@ -221,6 +230,18 @@ if args.singleuser:
     fbsd.add_stage(SingleuserBoot())
 else:
     fbsd.add_stage(Boot())
+
+if args.ssh_key:
+    # Create the .ssh directory
+    stage = CommandStage('root@.*#')
+    stage.state.add_command('mkdir -p /root/.ssh/')
+    fbsd.add_stage(stage)
+    # Copy the key
+    fbsd.add_stage(FileCopy(args.ssh_key, '/root/.ssh/id_rsa'))
+    # Remove non-root access
+    stage = CommandStage('root@.*#')
+    stage.state.add_command('chmod go-rwx /root/.ssh/id_rsa')
+    fbsd.add_stage(stage)
 
 if args.early_cmd != None and len(args.early_cmd) > 0:
     if args.singleuser:
